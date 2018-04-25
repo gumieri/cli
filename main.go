@@ -1,4 +1,4 @@
-package openInEditor
+package openineditor
 
 import (
 	"io/ioutil"
@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 )
 
+// File executes a text editor to edit a file
 func File(editorCommand string, filePath string) (err error) {
 	editor := exec.Command(editorCommand, filePath)
 
@@ -27,6 +28,9 @@ func File(editorCommand string, filePath string) (err error) {
 	return
 }
 
+// GetContentFromTemporaryFile executes a text editor
+// to edit a temporary file with an specified name
+// and return its content
 func GetContentFromTemporaryFile(editorCommand string, fileName string) (text string, err error) {
 	filePath := filepath.Join(os.TempDir(), fileName)
 
