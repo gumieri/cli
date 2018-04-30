@@ -31,12 +31,19 @@ func File(editorCommand string, filePath string) (err error) {
 // GetContentFromTemporaryFile executes a text editor
 // to edit a temporary file with an specified name
 // and return its content
-func GetContentFromTemporaryFile(editorCommand string, fileName string) (text string, err error) {
+func GetContentFromTemporaryFile(editorCommand string, fileName string, helper string) (text string, err error) {
 	filePath := filepath.Join(os.TempDir(), fileName)
 
 	tmpFile, err := os.Create(filePath)
 	if err != nil {
 		return
+	}
+
+	if helper != "" {
+		_, err = tmpFile.WriteString(helper)
+		if err != nil {
+			return
+		}
 	}
 
 	tmpFile.Close()
