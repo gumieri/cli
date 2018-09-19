@@ -1,64 +1,116 @@
 package openineditor
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
 
-// File executes a text editor to edit a file
-func File(editorCommand string, filePath string) (err error) {
-	editor := exec.Command(editorCommand, filePath)
+// Editor "object"
+type Editor struct {
+	Command     string
+	Flags       []string
+	OpenedFiles []File
+}
 
-	editor.Stdin = os.Stdin
-	editor.Stdout = os.Stdout
-	editor.Stderr = os.Stderr
+// File "object"
+type File struct {
+	FileName string
+	FilePath string
+	Content  []byte
+	File     *os.File
+}
 
-	err = editor.Start()
-	if err != nil {
-		return
-	}
+// NewTempFile create a File in the OS temporary directory
+func NewTempFile(fileName string, content []byte) (f File, err error) {
+	f.FileName = fileName
+	f.Content = content
 
-	err = editor.Wait()
-	if err != nil {
-		return
-	}
+	err = f.CreateInTempDir()
 
 	return
 }
 
-// GetContentFromTemporaryFile executes a text editor
-// to edit a temporary file with an specified name
-// and return its content
-func GetContentFromTemporaryFile(editorCommand string, fileName string, helper string) (text string, err error) {
-	filePath := filepath.Join(os.TempDir(), fileName)
+// CreateInTempDir create the File in the OS temporary directory
+func (f *File) CreateInTempDir() (err error) {
+	f.FilePath = filepath.Join(os.TempDir(), f.FileName)
 
-	tmpFile, err := os.Create(filePath)
+	f.File, err = os.Create(f.FilePath)
 	if err != nil {
 		return
 	}
 
-	if helper != "" {
-		_, err = tmpFile.WriteString(helper)
+	if len(f.Content) != 0 {
+		_, err = f.File.Write(f.Content)
 		if err != nil {
 			return
 		}
 	}
 
-	tmpFile.Close()
+	f.File.Close()
 
-	err = File(editorCommand, filePath)
+	return
+}
+
+// OpenFile executes the Editor to open the specified File
+func (e *Editor) OpenFile(f File) (err error) {
+	switch e.Command {
+	case "subl", "code":
+		e.Flags = append(e.Flags, "--wait")
+	}
+
+	args := append(e.Flags, f.FilePath)
+
+	process := exec.Command(e.Command, args...)
+
+	process.Stdin = os.Stdin
+	process.Stdout = os.Stdout
+	process.Stderr = os.Stderr
+
+	err = process.Start()
 	if err != nil {
 		return
 	}
 
-	content, err := ioutil.ReadFile(filePath)
+	err = process.Wait()
 	if err != nil {
 		return
 	}
 
-	text = string(content)
+	e.OpenedFiles = append(e.OpenedFiles, f)
+
+	return
+}
+
+// OpenTempFile executes the Editor to open a TempFile
+func (e *Editor) OpenTempFile(f File) (err error) {
+	if f.File == nil {
+		if f.CreateInTempDir() != nil {
+			return
+		}
+	}
+
+	err = e.OpenFile(f)
+	if err != nil {
+		return
+	}
+
+	f.Content, err = ioutil.ReadFile(f.FilePath)
+
+	return
+}
+
+// LastFile return the last opened file or return error if no file was opened
+func (e *Editor) LastFile() (f File, err error) {
+	totalFiles := len(e.OpenedFiles)
+	if totalFiles == 0 {
+		err = errors.New("no files were opened")
+		return
+	}
+
+	f = e.OpenedFiles[totalFiles-1]
 
 	return
 }
