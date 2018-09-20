@@ -12,7 +12,7 @@ import (
 type Editor struct {
 	Command     string
 	Flags       []string
-	OpenedFiles []File
+	OpenedFiles []*File
 }
 
 // File "object"
@@ -24,7 +24,7 @@ type File struct {
 }
 
 // NewTempFile create a File in the OS temporary directory
-func NewTempFile(fileName string, content []byte) (f File, err error) {
+func NewTempFile(fileName string, content []byte) (f *File, err error) {
 	f.FileName = fileName
 	f.Content = content
 
@@ -55,7 +55,7 @@ func (f *File) CreateInTempDir() (err error) {
 }
 
 // OpenFile executes the Editor to open the specified File
-func (e *Editor) OpenFile(f File) (err error) {
+func (e *Editor) OpenFile(f *File) (err error) {
 	switch e.Command {
 	case "subl", "code":
 		e.Flags = append(e.Flags, "--wait")
@@ -85,7 +85,7 @@ func (e *Editor) OpenFile(f File) (err error) {
 }
 
 // OpenTempFile executes the Editor to open a TempFile
-func (e *Editor) OpenTempFile(f File) (err error) {
+func (e *Editor) OpenTempFile(f *File) (err error) {
 	if f.File == nil {
 		if f.CreateInTempDir() != nil {
 			return
@@ -103,7 +103,7 @@ func (e *Editor) OpenTempFile(f File) (err error) {
 }
 
 // LastFile return the last opened file or return error if no file was opened
-func (e *Editor) LastFile() (f File, err error) {
+func (e *Editor) LastFile() (f *File, err error) {
 	totalFiles := len(e.OpenedFiles)
 	if totalFiles == 0 {
 		err = errors.New("no files were opened")
